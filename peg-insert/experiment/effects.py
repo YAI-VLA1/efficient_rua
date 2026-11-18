@@ -37,6 +37,14 @@ for model in sorted({m for m,c in groups}):
         for i in ids:
             assert pose(model,'C1',i)==pose(ref,'C1',i)
         record(f'{model} minus {ref}, C3-C1',change(model,'C1','C3',ids)-change(ref,'C1','C3',ids))
+qwen='Qwen3-14B-AWQ'
+gpt='openai_gpt-oss-20b'
+if all((m,c) in groups for m in (qwen,gpt) for c in ('C1','C3')):
+    ids=sorted(set.intersection(*(set(groups[m,c]) for m in (qwen,gpt) for c in ('C1','C3'))))
+    for i in ids:
+        assert pose(qwen,'C1',i)==pose(gpt,'C1',i)
+    record('Qwen3-14B minus GPT-OSS-20B, C3-C1',
+           change(qwen,'C1','C3',ids)-change(gpt,'C1','C3',ids))
 if rows:
     with (root/'paired-effects.csv').open('w') as f:
         w=csv.DictWriter(f,fieldnames=rows[0])

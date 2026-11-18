@@ -24,12 +24,26 @@ ax=fig.add_axes([.06,.50,.88,.32])
 ax.imshow(Image.open(root/'success-rates.png'))
 ax.axis('off')
 line(.495,'환경 검증',13,True)
-line(.461,'홈 복귀를 추가하지 않고 원본 오라클과 C3 오라클이 각각 20/20회 성공했다.\n50개 자세에서 C2 오프셋 부호가 일치했고 C3 위치의 최대 오차는 2.3×10⁻¹⁶ m 미만이었다.'.replace('2.3×10⁻¹⁶','0.00000000000000023'))
+oracle_counts = []
+for c in ('C1','C3'):
+    trials = list((root/'runs'/'oracle'/c).glob('trial_*'))
+    oracle_counts.append(f"{sum(int(t.name[-1]) for t in trials)}/{len(trials)}")
+line(.461,'홈 복귀를 추가하지 않은 원본과 C3 오라클의 성공은 각각 '+'과 '.join(oracle_counts)+'이었다.\nC2 오프셋은 반환된 중심 포즈의 좌표계로 직접 계산하고 C3는 원본 오라클 수식과 대조했다.')
 line(.386,'새로 생성한 코드',13,True)
-line(.351,'GPT-OSS-20B(Groq)는 19/50 → 13/50 → 10/50이었다. C1과 C3의 공통 시드에서\n성공으로 바뀐 경우는 5개, 실패로 바뀐 경우는 14개였다(정확 McNemar p=0.064).\n평균 출력은 1,814 → 811토큰으로 줄었다. 성공률 개선은 관찰되지 않았다.')
+paired = next(r for r in csv.DictReader((root/'paired-checks.csv').open())
+              if r['model']==g and r['condition']=='C3')
+measured = ' → '.join(f"{rows[g,c]['successes']}/{rows[g,c]['trials']}" for c in ('C1','C2','C3'))
+tokens = ' → '.join(f"{float(rows[g,c]['mean_completion_tokens']):,.0f}" for c in ('C1','C3'))
+line(.351, f"GPT-OSS-20B(Groq)의 삽입 성공은 {measured}였다. C1과 C3 공통 시드에서\n"
+     f"성공으로 바뀐 경우는 {paired['gains_vs_c1']}개, 실패로 바뀐 경우는 {paired['losses_vs_c1']}개였다"
+     f"(정확 McNemar p={float(paired['exact_p']):.3f}).\n평균 출력 토큰은 {tokens}이었다.")
 if (q,'C1') in rows:
     rate=100*float(rows[q,'C1']['execution_rate'])
-    line(.254,f'대체 모델 Qwen3-14B의 C1 코드 실행률은 {rate:.0f}%였다.\nC1 / C2 / C3 삽입 성공은 조건당 50회 중 {counts(q)}였다.')
+    change = next((r for r in csv.DictReader((root/'paired-checks.csv').open()) if r['model']==q and r['condition']=='C3'), None)
+    extra = ''
+    if change:
+        extra = f"\n같은 시드에서 성공으로 바뀐 경우 {change['gains_vs_c1']}개, 실패로 바뀐 경우 {change['losses_vs_c1']}개였다(p={float(change['exact_p']):.4f})."
+    line(.255,f'Qwen3-14B의 C1 코드 실행률은 {rate:.0f}%였다. 삽입 성공은 50회 중 {counts(q)}였다.'+extra)
 line(.176,'비교 범위',13,True)
 line(.141,'GPT-OSS와 Qwen3-14B는 새 코드를 생성했다. Qwen2.5-7B와 Astra는 기존 코드를\n수정된 환경에서 다시 실행했다. Astra는 Codex 전용 컨텍스트를 사용했다.\n한 가지 정답 포즈 태스크의 결과이며 모델 전반의 능력 차이로 일반화하기 어렵다.')
 line(.055,'성공은 robosuite 내장 판정 · 주 지표 구간은 Wilson 95% · Astra는 조건당 20회',8)

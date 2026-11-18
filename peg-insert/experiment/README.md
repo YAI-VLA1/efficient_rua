@@ -41,3 +41,5 @@ runuser -u capxtrial -- env REPLAY_SOURCE=/root/capx-backup/runs/$model/$cond ex
 ```
 
 성공 판정은 내장 _check_success(), 신뢰구간은 Wilson 95%다. score_check.py는 'API 한 개만 추가됨', 동일 초기 자세 및 동일 시드 집합을 확인하고 짝지은 정확 McNemar 검정을 수행한다. 효과량의 보조 구간은 시드 단위 부트스트랩이다. Astra 전용 Codex 컨텍스트와 로컬 vLLM 모델 사이의 차이 때문에 모델 간 상호작용 해석에는 제약이 있다.
+
+14B 모델은 기본 thinking 템플릿과 qwen3 reasoning parser를 사용했다. 프롬프트의 모델 호출 한도는 20,480토큰이다. 타이밍 점검에서 RTX 3090의 긴 응답이 기존 HTTP 180~200초 제한을 넘길 수 있어, 본 14B 실행 전에 로컬 모델 HTTP 대기 시간을 830/850초로 조정했다. 초기 점검 프로그램은 timing-pilot에 별도 보존했다. 본 비교의 세 조건에는 동일한 설정을 적용했다.
