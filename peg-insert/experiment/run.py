@@ -4,6 +4,16 @@ import os
 from pathlib import Path
 import numpy as np
 import tyro
+import requests
+
+# The local reasoning model can decode 20,480 tokens more slowly than the
+# upstream client's 200 s timeout. Leave simulator and IK requests unchanged.
+_post = requests.post
+def model_post(url, *args, **kwargs):
+    if url == 'http://127.0.0.1:8112/chat/completions':
+        kwargs['timeout'] = 850
+    return _post(url, *args, **kwargs)
+requests.post = model_post
 from capx.envs import launch
 from capx.envs.launch import LaunchArgs, main
 from capx.envs.simulators.robosuite_nut_assembly import FrankaRobosuiteNutAssembly
@@ -30,15 +40,14 @@ def seeded_reset(self, *, seed=None, options=None):
         (out / f'{seed:02}.json').write_text(json.dumps({k:v.tolist() for k,v in obs['nut_poses'].items()}))
     return obs, info
 FrankaRobosuiteNutAssembly.reset = seeded_reset
-if os.environ.get('FRESH_IK', '0') == '1' or os.environ.get('REPLAY_SOURCE'):
-    previous_reset = FrankaNutAssemblyCodeEnv.reset
-    def fresh_reset(self, *, seed=None, options=None):
-        global current_trial
-        current_trial = seed
-        for api in self._apis.values():
-            api.cfg = None
-        return previous_reset(self, seed=seed, options=options)
-    FrankaNutAssemblyCodeEnv.reset = fresh_reset
+previous_reset = FrankaNutAssemblyCodeEnv.reset
+def fresh_reset(self, *, seed=None, options=None):
+    global current_trial
+    current_trial = seed
+    for api in self._apis.values():
+        api.cfg = None
+    return previous_reset(self, seed=seed, options=options)
+FrankaNutAssemblyCodeEnv.reset = fresh_reset
 
 if os.environ.get('REPLAY_SOURCE'):
     from capx.envs import trial as trial_module
@@ -59,5 +68,13 @@ if os.environ.get('C3_VALIDATION') == '1':
         grasp + oracle[finish:])
     if os.environ.get('HOME_FIRST') == '1':
         FrankaNutAssemblyCodeEnv.oracle_code = 'goto_home_joint_position()\n' + FrankaNutAssemblyCodeEnv.oracle_code
+if os.environ.get('MISSING_TRIALS'):
+    from capx.envs import runner
+    original_parallel = runner.run_parallel_with_setup
+    def missing_only(trial_ids, **kwargs):
+        missing = {int(i) for i in os.environ['MISSING_TRIALS'].split(',')}
+        return original_parallel([i for i in trial_ids if i in missing], **kwargs)
+    runner.run_parallel_with_setup = missing_only
+
 if __name__ == '__main__':
     main(tyro.cli(LaunchArgs))

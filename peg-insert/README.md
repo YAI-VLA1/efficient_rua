@@ -1,5 +1,3 @@
-# CaP-X Peg Insert 실험
+# CaP-X Peg Insert
 
-conditions.patch에는 C2·C3 API 구현, API 등록, 환경 설정 두 개가 들어 있다. upstream-revision.txt에 기록된 CaP-X 커밋에 적용한다.
-
-새 환경에서는 이 디렉터리의 내용을 /root/capx-backup에 복사한 뒤 [재현 안내](experiment/README.md)를 따른다. 실행 스크립트는 /root/cap-x를 CaP-X 체크아웃으로 사용한다.
+각 trial의 역기구학 초기 상태를 독립적으로 초기화한 실험이다. conditions.patch는 upstream-revision.txt의 CaP-X 리비전에 C2·C3 도구와 YAML을 추가한다. 새 환경에서 이 디렉터리를 /root/capx-backup/corrected에 복사한다. 오라클 검증, 모델 실행 및 집계 절차는 [재현 안내](experiment/README.md)에 있다.

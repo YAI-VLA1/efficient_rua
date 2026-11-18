@@ -40,10 +40,11 @@ class Handler(BaseHTTPRequestHandler):
             else:
                 forward = urllib.request.Request('http://127.0.0.1:8113/v1/chat/completions',
                     data=json.dumps(req).encode(),headers={'Content-Type':'application/json'})
-                with urllib.request.urlopen(forward,timeout=180) as r:
+                with urllib.request.urlopen(forward,timeout=830) as r:
                     out = json.load(r)
-            content = out['choices'][0]['message']['content']
-            row = dict(model=req['model'],sha256=hashlib.sha256(content.encode()).hexdigest(),usage=out['usage'])
+            content = out['choices'][0]['message'].get('content') or ''
+            out['choices'][0]['message']['content'] = content
+            row = dict(finish_reason=out['choices'][0].get('finish_reason'), model=req['model'],sha256=hashlib.sha256(content.encode()).hexdigest(),usage=out['usage'])
             with (here/'local-usage.jsonl').open('a') as f:
                 print(json.dumps(row),file=f)
             status, data = 200,json.dumps(out).encode()

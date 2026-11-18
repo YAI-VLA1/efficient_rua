@@ -1,6 +1,7 @@
 """Local OpenRouter proxy recording billable usage and completion hashes."""
 import hashlib
 import json
+import time
 import urllib.error
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -13,11 +14,21 @@ lock = Lock()
 class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         body = self.rfile.read(int(self.headers['Content-Length']))
+        request = json.loads(body)
+        request['provider'] = {'only':['groq'], 'allow_fallbacks':False}
+        body = json.dumps(request).encode()
         req = urllib.request.Request('https://openrouter.ai/api/v1/chat/completions', data=body,
             headers={'Authorization': 'Bearer '+key, 'Content-Type': 'application/json'})
         try:
-            with urllib.request.urlopen(req, timeout=210) as res:
-                data = res.read()
+            for attempt in range(4):
+                try:
+                    with urllib.request.urlopen(req, timeout=180) as res:
+                        data = res.read()
+                    break
+                except urllib.error.HTTPError as exc:
+                    if exc.code != 429 or attempt == 3:
+                        raise
+                    time.sleep(5 * (attempt + 1))
             payload = json.loads(data)
             content = payload['choices'][0]['message'].get('content') or ''
             record = dict(id=payload['id'], provider=payload.get('provider'), usage=payload.get('usage'),
